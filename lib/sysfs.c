@@ -844,10 +844,11 @@ err:
 }
 
 /*
- * Returns 1 if the device is private LVM device. The @uuid (if not NULL)
+ * Returns 1 if the device is private device mapper device. The @uuid
+ * (if not NULL)
  * returns DM device UUID, use free() to deallocate.
  */
-int sysfs_devno_is_lvm_private(dev_t devno, char **uuid)
+int sysfs_devno_is_dm_private(dev_t devno, char **uuid)
 {
 	struct sysfs_cxt cxt = UL_SYSFSCXT_EMPTY;
 	char *id = NULL;
@@ -858,14 +859,21 @@ int sysfs_devno_is_lvm_private(dev_t devno, char **uuid)
 
 	id = sysfs_strdup(&cxt, "dm/uuid");
 
-	/* Private LVM devices use "LVM-<uuid>-<name>" uuid format (important
-	 * is the "LVM" prefix and "-<name>" postfix).
-	 */
-	if (id && strncmp(id, "LVM-", 4) == 0) {
-		char *p = strrchr(id + 4, '-');
+	if (id) {
+		/* Private LVM devices use "LVM-<uuid>-<name>" uuid format (important
+		 * is the "LVM" prefix and "-<name>" postfix).
+		 */
+		if (strncmp(id, "LVM-", 4) == 0) {
+			char *p = strrchr(id + 4, '-');
 
-		if (p && *(p + 1))
+			if (p && *(p + 1))
+				rc = 1;
+
+		} else if (strncmp(id, "stratis-1-private", 17) == 0) {
+			/* Private Stratis devices prefix the UUID with "stratis-1-private"
+			 */
 			rc = 1;
+		}
 	}
 
 	sysfs_deinit(&cxt);
